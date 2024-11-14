@@ -99,35 +99,46 @@ module softex_fp_add_rec #(
         assign operands [1] = strb_i [0] ? a : '0;
         assign operands [2] = strb_i [1] ? b : '0;
 
+        logic [NUM_REGS-1:0] fpnew_reg_enable;
+
+        fpnew_aux #(
+            .NumPipeRegs    (   NUM_REGS        ),
+            .TagType        (   TAG_TYPE        ),
+            .AuxType        (   logic           )
+        ) i_aux (
+          .clk_i,
+          .rst_ni,
+          .tag_i              (   tag_i            ),
+          .aux_i              (   '0               ),
+          .in_valid_i         (   valid_i          ),
+          .in_ready_o         (   ready_o          ),
+          .flush_i            (   clear_i          ),
+          .tag_o,
+          .aux_o              (   /*Unused*/       ),
+          .out_valid_o        (   valid_o          ),
+          .out_ready_i        (   ready_i          ),
+          .busy_o,
+          .reg_enable_o       (   fpnew_reg_enable )
+        );
+
         fpnew_fma #(
             .FpFormat       (   FPFORMAT        ),
             .NumPipeRegs    (   NUM_REGS        ),
-            .PipeConfig     (   REG_POS_CVFPU   ),
-            .TagType        (   TAG_TYPE        ),
-            .AuxType        (   logic           )
+            .PipeConfig     (   REG_POS_CVFPU   )
         ) i_sum (
-            .clk_i              (   clk_i           ),
-            .rst_ni             (   rst_ni          ),
-            .operands_i         (   operands        ),
-            .is_boxed_i         (   '1              ),
-            .rnd_mode_i         (   mode_i          ),
-            .op_i               (   fpnew_pkg::ADD  ),
-            .op_mod_i           (   '0              ),
-            .tag_i              (   tag_i           ),
-            .mask_i             (   |strb_i         ),
-            .aux_i              (   '0              ),
-            .in_valid_i         (   valid_i         ),
-            .in_ready_o         (   ready_o         ),
-            .flush_i            (   clear_i         ),
-            .result_o           (   res_o           ),
-            .status_o           (                   ),
-            .extension_bit_o    (                   ),
-            .tag_o              (   tag_o           ),
-            .mask_o             (   strb_o          ),
-            .aux_o              (                   ),
-            .out_valid_o        (   valid_o         ),
-            .out_ready_i        (   ready_i         ),
-            .busy_o             (   busy_o          )
+            .clk_i,
+            .rst_ni,
+            .operands_i         (   operands         ),
+            .is_boxed_i         (   '1               ),
+            .rnd_mode_i         (   mode_i           ),
+            .op_i               (   fpnew_pkg::ADD   ),
+            .op_mod_i           (   '0               ),
+            .mask_i             (   |strb_i          ),
+            .result_o           (   res_o            ),
+            .status_o           (   /*Unused*/       ),
+            .extension_bit_o    (   /*Unused*/       ),
+            .mask_o             (   strb_o           ),
+            .reg_enable_i       (   fpnew_reg_enable )
         );
     end else begin : gen_recursion
         //Here we instantiate 2 recursive blocks and sum their results
@@ -222,35 +233,46 @@ module softex_fp_add_rec #(
             assign sum_valid    = o_valid_a | o_valid_b;
         end
 
+        logic [NUM_REGS-1:0] fpnew2_reg_enable;
+
+        fpnew_aux #(
+            .NumPipeRegs    (   NUM_REGS        ),
+            .TagType        (   TAG_TYPE        ),
+            .AuxType        (   logic           )
+        ) i_aux (
+          .clk_i,
+          .rst_ni,
+          .tag_i              (   a_o_tag           ),
+          .aux_i              (   '0                ),
+          .in_valid_i         (   sum_valid         ),
+          .in_ready_o         (   o_ready_sum       ),
+          .flush_i            (   clear_i           ),
+          .tag_o,
+          .aux_o              (   /*Unused*/        ),
+          .out_valid_o        (   valid_o           ),
+          .out_ready_i        (   ready_i           ),
+          .busy_o             (   fma_o_busy        ),
+          .reg_enable_o       (   fpnew2_reg_enable )
+        );
+
         fpnew_fma #(
             .FpFormat       (   FPFORMAT        ),
             .NumPipeRegs    (   NUM_REGS        ),
-            .PipeConfig     (   REG_POS_CVFPU   ),
-            .TagType        (   TAG_TYPE        ),
-            .AuxType        (   logic           )
+            .PipeConfig     (   REG_POS_CVFPU   )
         ) i_sum (
-            .clk_i              (   clk_i           ),
-            .rst_ni             (   rst_ni          ),
-            .operands_i         (   operands        ),
-            .is_boxed_i         (   '1              ),
-            .rnd_mode_i         (   mode_i          ),
-            .op_i               (   fpnew_pkg::ADD  ),
-            .op_mod_i           (   '0              ),
-            .tag_i              (   a_o_tag         ),
-            .mask_i             (   sum_mask        ),
-            .aux_i              (   '0              ),
-            .in_valid_i         (   sum_valid       ),
-            .in_ready_o         (   o_ready_sum     ),
-            .flush_i            (   clear_i         ),
-            .result_o           (   res_o           ),
-            .status_o           (                   ),
-            .extension_bit_o    (                   ),
-            .tag_o              (   tag_o           ),
-            .mask_o             (   strb_o          ),
-            .aux_o              (                   ),
-            .out_valid_o        (   valid_o         ),
-            .out_ready_i        (   ready_i         ),
-            .busy_o             (   fma_o_busy      )
+            .clk_i              (   clk_i             ),
+            .rst_ni             (   rst_ni            ),
+            .operands_i         (   operands          ),
+            .is_boxed_i         (   '1                ),
+            .rnd_mode_i         (   mode_i            ),
+            .op_i               (   fpnew_pkg::ADD    ),
+            .op_mod_i           (   '0                ),
+            .mask_i             (   sum_mask          ),
+            .result_o           (   res_o             ),
+            .status_o           (   /*Unused*/        ),
+            .extension_bit_o    (   /*Unused*/        ),
+            .mask_o             (   strb_o            ),
+            .reg_enable_i       (   fpnew2_reg_enable )
         );
 
         assign busy_o = a_o_busy | fma_o_busy;

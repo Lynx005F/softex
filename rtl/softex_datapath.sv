@@ -157,35 +157,46 @@ module softex_datapath #(
         .ready_o         (  max_ready                                       )
     );
 
+    logic [SUM_REGS_IN-1:0] fpnew_reg_enable;
+
+    fpnew_aux #(
+      .NumPipeRegs    (   SUM_REGS_IN             ),
+      .TagType        (   logic                   ),
+      .AuxType        (   logic                   )
+    ) i_aux (
+      .clk_i,
+      .rst_ni,
+      .tag_i              (   '0                                      ),
+      .aux_i              (   '0                                      ),
+      .in_valid_i         (   new_max_flag & max_valid                ),
+      .in_ready_o         (   max_diff_ready                          ),
+      .flush_i            (   clear_i                                 ),
+      .tag_o              (   /*Unused*/                              ),
+      .aux_o              (   /*Unused*/                              ),
+      .out_valid_o        (   max_diff_valid                          ),
+      .out_ready_i        (   scal_exp_ready                          ),
+      .busy_o             (   /*Unused*/                              ),
+      .reg_enable_o       (   fpnew_reg_enable                        )
+    );
+
     fpnew_fma #(
         .FpFormat       (   IN_FPFORMAT             ),
         .NumPipeRegs    (   SUM_REGS_IN             ),
-        .PipeConfig     (   fpnew_pkg::DISTRIBUTED  ),
-        .TagType        (   logic                   ),
-        .AuxType        (   logic                   )
+        .PipeConfig     (   fpnew_pkg::DISTRIBUTED  )
     ) i_new_old_max_diff (
-        .clk_i              (   clk_i                                   ),
-        .rst_ni             (   rst_ni                                  ),
+        .clk_i,
+        .rst_ni,
         .operands_i         (   {new_max, old_max, {(IN_WIDTH){1'b0}}}  ),
         .is_boxed_i         (   '1                                      ),
         .rnd_mode_i         (   fpnew_pkg::RNE                          ),
         .op_i               (   fpnew_pkg::ADD                          ),
         .op_mod_i           (   '1                                      ),
-        .tag_i              (   '0                                      ),
         .mask_i             (   '1                                      ),
-        .aux_i              (   '0                                      ),
-        .in_valid_i         (   new_max_flag & max_valid                ),
-        .in_ready_o         (   max_diff_ready                          ),
-        .flush_i            (   clear_i                                 ),
         .result_o           (   max_diff                                ),
-        .status_o           (                                           ),
-        .extension_bit_o    (                                           ),
-        .tag_o              (                                           ),
-        .mask_o             (                                           ),
-        .aux_o              (                                           ),
-        .out_valid_o        (   max_diff_valid                          ),
-        .out_ready_i        (   scal_exp_ready                          ),
-        .busy_o             (                                           )
+        .status_o           (   /*Unused*/                              ),
+        .extension_bit_o    (   /*Unused*/                              ),
+        .mask_o             (   /*Unused*/                              ),
+        .reg_enable_i       (   fpnew_reg_enable                        )
     );
 
     expu_top #(
@@ -385,16 +396,16 @@ module softex_datapath #(
     );
 
     if (ACC_FPFORMAT != IN_FPFORMAT) begin : gen_inv_cast
+        assign cast_valid = acc_valid;
+
         fpnew_cast_multi #(
             .FpFmtConfig    (   softex_pkg::fmt_to_conf(ACC_FPFORMAT, IN_FPFORMAT)  ),
             .IntFmtConfig   (   '0                                                  ),
             .NumPipeRegs    (   0                                                   ),
-            .PipeConfig     (   fpnew_pkg::BEFORE                                   ),
-            .TagType        (   logic                                               ),
-            .AuxType        (   logic                                               )
+            .PipeConfig     (   fpnew_pkg::BEFORE                                   )
         ) i_inv_cast (
-            .clk_i              (   clk_i           ),
-            .rst_ni             (   rst_ni          ),
+            .clk_i,
+            .rst_ni,
             .operands_i         (   inv_pre_cast    ),
             .is_boxed_i         (   '1              ),
             .rnd_mode_i         (   fpnew_pkg::RNE  ),
@@ -403,21 +414,12 @@ module softex_datapath #(
             .src_fmt_i          (   ACC_FPFORMAT    ),
             .dst_fmt_i          (   IN_FPFORMAT     ),
             .int_fmt_i          (   fpnew_pkg::INT8 ),
-            .tag_i              (   '0              ),
             .mask_i             (   '0              ),
-            .aux_i              (   '0              ),
-            .in_valid_i         (   acc_valid       ),
-            .in_ready_o         (                   ),
-            .flush_i            (   '0              ),
             .result_o           (   inv_cast_res    ),
-            .status_o           (                   ),
-            .extension_bit_o    (                   ),
-            .tag_o              (                   ),
-            .mask_o             (                   ),
-            .aux_o              (                   ),
-            .out_valid_o        (   cast_valid      ),
-            .out_ready_i        (   '1              ),
-            .busy_o             (                   )
+            .status_o           (   /*Unused*/      ),
+            .extension_bit_o    (   /*Unused*/      ),
+            .mask_o             (   /*Unused*/      ),
+            .reg_enable_i       (   '1              )
         );
     end else begin : assign_inv
         assign inv_cast_res = inv_pre_cast;

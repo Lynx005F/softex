@@ -263,12 +263,10 @@ module softex_acc_datapath #(
             .FpFmtConfig    (   softex_pkg::fmt_to_conf(MUL_FPFORMAT, ACC_FPFORMAT) ),
             .IntFmtConfig   (   '0                                                  ),
             .NumPipeRegs    (   0                                                   ),
-            .PipeConfig     (   fpnew_pkg::BEFORE                                   ),
-            .TagType        (   logic                                               ),
-            .AuxType        (   logic                                               )
+            .PipeConfig     (   fpnew_pkg::BEFORE                                   )
         ) i_factor_cast (
-            .clk_i              (   clk_i                               ),
-            .rst_ni             (   rst_ni                              ),
+            .clk_i,
+            .rst_ni,
             .operands_i         (   {{ZEROPAD_MUL{1'b0}}, factor.value} ),
             .is_boxed_i         (   '1                                  ),
             .rnd_mode_i         (   fpnew_pkg::RNE                      ),
@@ -277,21 +275,12 @@ module softex_acc_datapath #(
             .src_fmt_i          (   MUL_FPFORMAT                        ),
             .dst_fmt_i          (   ACC_FPFORMAT                        ),
             .int_fmt_i          (   fpnew_pkg::INT8                     ),
-            .tag_i              (   '0                                  ),
             .mask_i             (   '0                                  ),
-            .aux_i              (   '0                                  ),
-            .in_valid_i         (   '1                                  ),
-            .in_ready_o         (                                       ),
-            .flush_i            (   '0                                  ),
             .result_o           (   fma_factor                          ),
-            .status_o           (                                       ),
-            .extension_bit_o    (                                       ),
-            .tag_o              (                                       ),
-            .mask_o             (                                       ),
-            .aux_o              (                                       ),
-            .out_valid_o        (                                       ),
-            .out_ready_i        (   '1                                  ),
-            .busy_o             (                                       )
+            .status_o           (   /*Unused*/                          ),
+            .extension_bit_o    (   /*Unused*/                          ),
+            .mask_o             (   /*Unused*/                          ),
+            .reg_enable_i       (   '1                                  )
         );
     end else begin : assign_factor
         assign fma_factor = factor.value;
@@ -322,12 +311,10 @@ module softex_acc_datapath #(
             .FpFmtConfig    (   softex_pkg::fmt_to_conf(ADD_FPFORMAT, ACC_FPFORMAT) ),
             .IntFmtConfig   (   '0                                                  ),
             .NumPipeRegs    (   0                                                   ),
-            .PipeConfig     (   fpnew_pkg::BEFORE                                   ),
-            .TagType        (   logic                                               ),
-            .AuxType        (   logic                                               )
+            .PipeConfig     (   fpnew_pkg::BEFORE                                   )
         ) i_addend_cast (
-            .clk_i              (   clk_i                                       ),
-            .rst_ni             (   rst_ni                                      ),
+            .clk_i,
+            .rst_ni,
             .operands_i         (   {{ZEROPAD_ADD{1'b0}}, fma_addend_pre_cast}  ),
             .is_boxed_i         (   '1                                          ),
             .rnd_mode_i         (   fpnew_pkg::RNE                              ),
@@ -336,21 +323,13 @@ module softex_acc_datapath #(
             .src_fmt_i          (   ADD_FPFORMAT                                ),
             .dst_fmt_i          (   ACC_FPFORMAT                                ),
             .int_fmt_i          (   fpnew_pkg::INT8                             ),
-            .tag_i              (   '0                                          ),
             .mask_i             (   '0                                          ),
-            .aux_i              (   '0                                          ),
-            .in_valid_i         (   '1                                          ),
-            .in_ready_o         (                                               ),
             .flush_i            (   '0                                          ),
             .result_o           (   fma_addend                                  ),
-            .status_o           (                                               ),
-            .extension_bit_o    (                                               ),
-            .tag_o              (                                               ),
-            .mask_o             (                                               ),
-            .aux_o              (                                               ),
-            .out_valid_o        (                                               ),
-            .out_ready_i        (   '1                                          ),
-            .busy_o             (                                               )
+            .status_o           (   /*Unused*/                                  ),
+            .extension_bit_o    (   /*Unused*/                                  ),
+            .mask_o             (   /*Unused*/                                  ),
+            .reg_enable_i       (   '1                                          )
         );
     end else begin : assign_addend
         assign fma_addend = fma_addend_pre_cast;
@@ -379,12 +358,32 @@ module softex_acc_datapath #(
         endcase
     end
 
+    logic [NUM_REGS_FMA-1:0] reg_enable;
+
+    fpnew_aux #(
+      .NumPipeRegs    (   NUM_REGS_FMA                         ),
+      .TagType        (   logic [$clog2(NUM_REGS_FMA) - 1 : 0] ),
+      .AuxType        (   logic                                )
+    ) i_aux (
+      .clk_i,
+      .rst_ni,
+      .tag_i              (   fma_i_tag       ),
+      .aux_i              (   '0              ),
+      .in_valid_i         (   fma_i_valid     ),
+      .in_ready_o         (   fma_o_ready     ),
+      .flush_i            (   clear_i         ),
+      .tag_o              (   fma_o_tag       ),
+      .aux_o              (   /*Unused*/      ),
+      .out_valid_o        (   fma_o_valid     ),
+      .out_ready_i        (   fma_i_ready     ),
+      .busy_o             (   /*Unused*/      ),
+      .reg_enable_o       (   reg_enable      )
+    );
+
     fpnew_fma #(
-        .FpFormat       (   ACC_FPFORMAT                            ),
-        .NumPipeRegs    (   NUM_REGS_FMA                            ),
-        .PipeConfig     (   fpnew_pkg::DISTRIBUTED                  ),
-        .TagType        (   logic [$clog2(NUM_REGS_FMA) - 1 : 0]    ),
-        .AuxType        (   logic                                   )
+        .FpFormat       (   ACC_FPFORMAT           ),
+        .NumPipeRegs    (   NUM_REGS_FMA           ),
+        .PipeConfig     (   fpnew_pkg::DISTRIBUTED )
     ) i_accumulator_fma (
         .clk_i              (   clk_i           ),
         .rst_ni             (   rst_ni          ),
@@ -393,21 +392,12 @@ module softex_acc_datapath #(
         .rnd_mode_i         (   ROUND_MODE      ),
         .op_i               (   fma_operation   ),
         .op_mod_i           (   '0              ),
-        .tag_i              (   fma_i_tag       ),
         .mask_i             (   '1              ),
-        .aux_i              (   '0              ),
-        .in_valid_i         (   fma_i_valid     ),
-        .in_ready_o         (   fma_o_ready     ),
-        .flush_i            (   clear_i         ),
         .result_o           (   fma_res         ),
-        .status_o           (                   ),
-        .extension_bit_o    (                   ),
-        .tag_o              (   fma_o_tag       ),
-        .mask_o             (                   ),
-        .aux_o              (                   ),
-        .out_valid_o        (   fma_o_valid     ),
-        .out_ready_i        (   fma_i_ready     ),
-        .busy_o             (                   )
+        .status_o           (   /*Unused*/      ),
+        .extension_bit_o    (   /*Unused*/      ),
+        .mask_o             (   /*Unused*/      ),
+        .reg_enable_i       (   reg_enable      )
     );
 
     softex_acc_den_inverter #(

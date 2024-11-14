@@ -48,12 +48,10 @@ module softex_fp_red_sum #(
                 .FpFmtConfig    (   softex_pkg::fmt_to_conf(IN_FPFORMAT, ACC_FPFORMAT)  ),
                 .IntFmtConfig   (   '0                                                  ),
                 .NumPipeRegs    (   0                                                   ),
-                .PipeConfig     (   fpnew_pkg::BEFORE                                   ),
-                .TagType        (   logic                                               ),
-                .AuxType        (   logic                                               )
+                .PipeConfig     (   fpnew_pkg::BEFORE                                   )
             ) i_vect_cast (
-                .clk_i              (   clk_i                           ),
-                .rst_ni             (   rst_ni                          ),
+                .clk_i,
+                .rst_ni,
                 .operands_i         (   {{ZEROPAD{1'b0}}, vect_i [i]}   ),
                 .is_boxed_i         (   '1                              ),
                 .rnd_mode_i         (   fpnew_pkg::RNE                  ),
@@ -62,21 +60,12 @@ module softex_fp_red_sum #(
                 .src_fmt_i          (   IN_FPFORMAT                     ),
                 .dst_fmt_i          (   ACC_FPFORMAT                    ),
                 .int_fmt_i          (   fpnew_pkg::INT8                 ),
-                .tag_i              (   '0                              ),
                 .mask_i             (   '0                              ),
-                .aux_i              (   '0                              ),
-                .in_valid_i         (   '1                              ),
-                .in_ready_o         (                                   ),
-                .flush_i            (   '0                              ),
                 .result_o           (   cast_vect [i]                   ),
-                .status_o           (                                   ),
-                .extension_bit_o    (                                   ),
-                .tag_o              (                                   ),
-                .mask_o             (                                   ),
-                .aux_o              (                                   ),
-                .out_valid_o        (                                   ),
-                .out_ready_i        (   '1                              ),
-                .busy_o             (                                   )
+                .status_o           (   /*Unused*/                      ),
+                .extension_bit_o    (   /*Unused*/                      ),
+                .mask_o             (   /*Unused*/                      ),
+                .reg_enable_i       (   '1                              )
             );
         end else begin : assign_vect
             assign cast_vect [i] = vect_i [i];
